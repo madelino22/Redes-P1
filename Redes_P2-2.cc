@@ -53,15 +53,16 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int udp_socket = socket(info->ai_family, info->ai_socktype, 0);
+    int udpSocket = socket(info->ai_family, info->ai_socktype, 0);
 
-    if (udp_socket == -1)
+    if (udpSocket == -1)
     {
-        fprintf(stderr, "Error getting the socket %s\n", gai_strerror(udp_socket));
+        fprintf(stderr, "Error getting the socket %s\n", gai_strerror(udpSocket));
         return -1;
     }
 
-    bind(udp_socket, info->ai_addr, info->ai_addrlen);
+    //
+    bind(udpSocket, info->ai_addr, info->ai_addrlen);
 
     freeaddrinfo(info);
 
@@ -74,29 +75,32 @@ int main(int argc, char *argv[])
         struct sockaddr client;
         socklen_t clientLen = sizeof(sockaddr);
 
-        int bytes = recvfrom(udp_socket, buffer, bufferLen, 0, &client, &clientLen);
+        //Recibir comando del cliente
+        int bytes = recvfrom(udpSocket, buffer, bufferLen, 0, &client, &clientLen);
 
-        char puerto[NI_MAXSERV];
-        char nombreHost[NI_MAXHOST];
+        char port[NI_MAXSERV];
+        char hostName[NI_MAXHOST];
         //
-        check = getnameinfo(&client, clientLen, nombreHost, NI_MAXHOST, puerto, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
+        check = getnameinfo(&client, clientLen, hostName, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
 
         if (check != 0)
         {
-            fprintf(stderr, "Error using getnameinfo: %s\n", gai_strerror(check));
+            fprintf(stderr, "Error de getnameinfo: %s\n", gai_strerror(check));
             continue;
         }
 
-        printf("%d bytes de %s:%s\n", bytes, nombreHost, puerto);
+        printf("%d bytes de %s:%s\n", bytes, hostName, port);
         time_t rawTime;
         struct tm *timeInfo;
 
+        //Obtención de tiempo actual
         time(&rawTime);
 
         timeInfo = localtime(&rawTime);
 
         char *format;
 
+        //Lectura de comando
         switch (buffer[0])
         {
         case 't':
@@ -106,12 +110,12 @@ int main(int argc, char *argv[])
          format = "%F";
             break;
         case 'q':
-            printf("Saliendo...\n");
-            close(udp_socket);
+            printf("Cerrando conexión\n");
+            close(udpSocket);
             return 0;
         default:
-            printf("Comando no soportado %s\n", buffer);
-            sendto(udp_socket, "Comando no soportado\n", 21, 0, &client, clientLen);
+            printf("Comando erróneo %s\n", buffer);
+            sendto(udpSocket, "Comando erróneo\n", 21, 0, &client, clientLen);
             continue;
         }
 
@@ -119,10 +123,11 @@ int main(int argc, char *argv[])
         int timeBytes = strftime(send, 80, format, timeInfo);
         send[timeBytes] = '\n';
 
-        sendto(udp_socket, send, timeBytes + 1, 0, &client, clientLen);
+        //Enviar respuesta al cliente
+        sendto(udpSocket, send, timeBytes + 1, 0, &client, clientLen);
     }
 
-    close(udp_socket);
+    close(udpSocket);
 
     return 0;
 }
